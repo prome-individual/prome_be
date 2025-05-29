@@ -20,13 +20,14 @@ enum Gender {
 }
 
 model User {
-  user_id  Int     @id @default(autoincrement())
-  id       String  @unique
-  password String
-  name     String?
-  age      Int?
-  gender   Gender?
-  phone    String?
+  user_id       Int     @id @default(autoincrement())
+  id            String  @unique
+  password      String
+  name          String?
+  age           Int?
+  gender        Gender?
+  phone         String?
+  refresh_token String?
 
   chat_rooms ChatRoom[]
   diagnosis  Diagnosis[]
