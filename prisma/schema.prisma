@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  male
+  female
+}
+
+model User {
+  user_id  Int     @id @default(autoincrement())
+  id       String  @unique
+  password String
+  name     String?
+  age      Int?
+  gender   Gender?
+  phone    String?
+
+  chat_rooms ChatRoom[]
+  diagnosis  Diagnosis[]
+}
+
+model ChatRoom {
+  chat_id    Int      @id @default(autoincrement())
+  user_id    Int
+  title      String?
+  created_at DateTime @default(now())
+
+  user     User          @relation(fields: [user_id], references: [user_id])
+  comments ChatComment[]
+}
+
+model ChatComment {
+  content_id  Int      @id @default(autoincrement())
+  chat_id     Int
+  is_question Boolean
+  content     String
+  created_at  DateTime @default(now())
+
+  chat_room ChatRoom @relation(fields: [chat_id], references: [chat_id])
+}
+
+model Hospital {
+  hospital_id   Int     @id @default(autoincrement())
+  hospital_name String?
+  distance      Float?
+  score         Int?
+
+  reservations Reservation[]
+  calendars    Calendar[]
+}
+
+model Reservation {
+  reservation_id   Int      @id @default(autoincrement())
+  hospital_id      Int
+  reservation_date DateTime
+  address          String
+
+  hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
+}
+
+model Calendar {
+  calendar_id   Int      @id @default(autoincrement())
+  hospital_id   Int
+  hospital_date DateTime
+
+  hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
+}
+
+// model Description {
+//   // Not used in DB, stored in files
+// }
+
+model Diagnosis {
+  diagnosis_id Int      @id @default(autoincrement())
+  user_id      Int
+  result       String
+  created_at   DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id])
+}
