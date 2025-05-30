@@ -17,7 +17,7 @@ module.exports.register = async (req, res, next) => {
             return next(createError(409, '이미 가입된 아이디입니다.', 'ID_EXISTS'));
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 10); // 10: 복잡도
         await prisma.user.create({
             data: { id, password: hashedPassword, name, age, gender, phone }
         });
