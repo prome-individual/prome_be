@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../models/prisma');
 const createError = require('../utils/createError');
 const { generateAccessToken, generateRefreshToken } = require('../utils/token');
+const config = require("../config/config");
 
 module.exports.register = async (req, res, next) => {
     try {
@@ -78,7 +79,7 @@ module.exports.refresh = async (req, res, next) => {
             return next(createError(400, 'refresh token이 없습니다.', 'NO_REFRESH_TOKEN'));
         }
 
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const decoded = jwt.verify(refreshToken, config.jwtRefreshSecretKey);
         const newAccessToken = generateAccessToken(decoded.userId);
 
         return res.status(200).json({

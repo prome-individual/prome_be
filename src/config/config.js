@@ -7,5 +7,6 @@ module.exports = {
     recommendUrl: process.env.RECOMMEND_SERVER_URL,
     databaseUrl: process.env.DATABASE_URL,
     port: process.env.PORT || 3000,
-    secretKey: process.env.SECRET_KEY,
+    jwtSecretKey:process.env.JWT_SECRET,
+    jwtRefreshSecretKey:process.env.JWT_REFRESH_SECRET
 };
