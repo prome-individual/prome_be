@@ -1,0 +1,11 @@
+require('dotenv').config(); 
+
+module.exports = {
+    ecgUrl: process.env.ECG_SERVER_URL,
+    ragUrl: process.env.RAG_SERVER_URL,
+    whisperUrl: process.env.WHISPER_SERVER_URL,
+    recommendUrl: process.env.RECOMMEND_SERVER_URL,
+    databaseUrl: process.env.DATABASE_URL,
+    port: process.env.PORT || 3000,
+    secretKey: process.env.SECRET_KEY,
+};

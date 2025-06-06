@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../models/prisma');
 const createError = require('../utils/createError');
+const aiService = require('../services/aiService');
 
 module.exports.diagnose = async (req, res, next) => {
     // TODO : AI 서버에 데이터 보냄

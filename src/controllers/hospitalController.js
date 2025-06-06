@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../models/prisma');
 const createError = require('../utils/createError');
+const aiService = require('../services/aiService');
 
 module.exports.findHospital = async(req, res, next) => {
     // AI -> hospital list 뽑는 함수 실행

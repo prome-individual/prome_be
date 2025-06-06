@@ -1,5 +1,6 @@
 const prisma = require('../models/prisma');
 const createError = require('../utils/createError');
+const aiService = require('../services/aiService');
 
 module.exports.ask = async (req, res, next) => {
     // TODO : 질문하기
