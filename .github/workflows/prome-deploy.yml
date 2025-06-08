@@ -3,7 +3,7 @@ name: prome CICD
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   deploy:
@@ -24,7 +24,7 @@ jobs:
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             cd ~/prome_be
-            git pull origin main
+            git pull origin master
             npm install
             pm2 restart all
           EOF
