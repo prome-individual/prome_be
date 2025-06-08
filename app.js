@@ -13,15 +13,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+app.get("/", (req, res) => {
+    res.json({ message: "서버 작동 중" });
+});
+
 app.use('/auth', authRoutes);
 app.use('/diagnose', diagRoutes)
 app.use('/chat', chatRoutes)
 app.use('/hospital', hospitalRoutes)
 app.use('/', etcRoutes);
 
-app.get("/", (req, res) => {
-    res.json({ message: "서버 작동 중" });
-});
 
 app.use(errorHandler);
 
