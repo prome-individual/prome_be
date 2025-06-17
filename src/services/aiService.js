@@ -12,7 +12,7 @@ async function generateAnswer(data) {
 }
 
 async function extractSchedule(data) {
-    const response = await axios.post(`${config.whisperUrl}/ai_whisper`, data);
+    const response = await axios.post(`${config.recommendUrl}/ai_whisper`, data);
     return response.data;
 }
 
