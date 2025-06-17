@@ -1,19 +1,12 @@
-const prisma = require('../models/prisma');
-const createError = require('../utils/createError');
-const aiService = require('../services/aiService');
-import { generateAnswer } from '../services/aiService';
 
-module.exports.ask = async (req, res, next) => {
-    // TODO : 질문하기
-    // AI -> 답변 만들어서 보여줌
+import prisma from '../models/prisma.js';
+import createError from '../utils/createError.js';
+import * as ai from '../services/aiService.js';
+
+export const ask = async (req, res, next) => {
     try {
         // [1] 요청 본문에서 chat_id, content 추출 및 유효성 검사
         const { chat_id, content } = req.body;
-
-        // 사용자 인증 미들웨어를 통해 이 채팅방의 소유주가 맞는지 확인하는 로직이 추가될 수 있습니다.
-        // const userId = req.user.id; 
-        // const roomOwner = await prisma.chatRoom.findFirst({ where: { chat_id: chat_id, user_id: userId } });
-        // if (!roomOwner) { return next(createError(403, '권한이 없습니다.', 'FORBIDDEN')); }
 
         if (!chat_id || !content || typeof content !== 'string' || content.trim() === '') {
             return next(createError(400, '질문을 입력해주세요', 'INVALID_INPUT'));
@@ -24,7 +17,7 @@ module.exports.ask = async (req, res, next) => {
 
         try {
             // [3] FastAPI AI 서버에 질문 전송
-            const aiResponse = await aiService.generateAnswer({ question: content });
+            const aiResponse = await ai.generateAnswer({ question: content });
             
             // [4] AI 응답 성공 여부 확인
             if (aiResponse && aiResponse.answer) {
@@ -36,7 +29,7 @@ module.exports.ask = async (req, res, next) => {
             // [4-실패] AI 응답 실패 시
             console.error("AI 응답 생성 실패:", error.message);
             aiContent = "죄송합니다. 답변을 생성하지 못했습니다.";
-            responseMessage = "AI 응답 실패, 기본 메시지로 대체됨";
+            responseMessage = "AI 응답 실패";
         }
 
         // [2, 5] 질문과 답변을 트랜잭션으로 동시에 저장
@@ -89,8 +82,7 @@ module.exports.ask = async (req, res, next) => {
 
     
 };
-
-module.exports.getChat = async (req, res, next) => {
+export const getChat = async (req, res, next) => {
     // TODO : 해당 user의 특정 chat_id 채팅들 GET
     try {
         const { chat_id } = req.params;
@@ -136,7 +128,7 @@ module.exports.getChat = async (req, res, next) => {
     }
 };
 
-module.exports.getChatPeriod = async (req, res, next) => {
+export const getChatPeriod = async (req, res, next) => {
     // TODO : 해당 user의 특정 period chat GET
     // 이 때, period는 created_at으로 여기서 만들어서 GET
 };

@@ -41,6 +41,8 @@ model ChatRoom {
 
   user     User          @relation(fields: [user_id], references: [user_id])
   comments ChatComment[]
+
+  @@map("chat_rooms")
 }
 
 model ChatComment {
@@ -51,6 +53,8 @@ model ChatComment {
   created_at  DateTime @default(now())
 
   chat_room ChatRoom @relation(fields: [chat_id], references: [chat_id])
+
+  @@map("chat_comments")
 }
 
 model Hospital {
@@ -91,4 +95,6 @@ model Diagnosis {
   created_at   DateTime @default(now())
 
   user User @relation(fields: [user_id], references: [user_id])
+
+  @@map("diagnosis")
 }
