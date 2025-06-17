@@ -31,6 +31,8 @@ model User {
 
   chat_rooms ChatRoom[]
   diagnosis  Diagnosis[]
+
+  @@map("user") // 실제 테이블 이름 'user'와 매핑
 }
 
 model ChatRoom {
@@ -65,6 +67,8 @@ model Hospital {
 
   reservations Reservation[]
   calendars    Calendar[]
+
+  @@map("hospital") // 실제 테이블 이름 'hospital'과 매핑
 }
 
 model Reservation {
@@ -74,6 +78,8 @@ model Reservation {
   address          String
 
   hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
+
+  @@map("reservation") // 실제 테이블 이름 'reservation'과 매핑
 }
 
 model Calendar {
@@ -82,6 +88,8 @@ model Calendar {
   hospital_date DateTime
 
   hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
+
+  @@map("calendar") // 실제 테이블 이름 'calendar'과 매핑
 }
 
 // model Description {

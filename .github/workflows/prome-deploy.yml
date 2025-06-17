@@ -24,5 +24,6 @@ jobs:
             cd ~/prome_be
             git pull origin master
             npm install
+            npx prisma generate
             pm2 restart all
           EOF
