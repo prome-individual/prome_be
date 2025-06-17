@@ -5,61 +5,71 @@ import * as ai from '../services/aiService.js';
 
 export const ask = async (req, res, next) => {
     try {
-        // [1] 요청 본문에서 chat_id, content 추출 및 유효성 검사
-        const { chat_id, content } = req.body;
+        // [1] 요청 본문에서 데이터 추출 (chat_id는 없을 수도 있으므로 let으로 선언)
+        let { chat_id, content } = req.body;
 
-        if (!chat_id || !content || typeof content !== 'string' || content.trim() === '') {
+        if (!content || typeof content !== 'string' || content.trim() === '') {
             return next(createError(400, '질문을 입력해주세요', 'INVALID_INPUT'));
         }
+
+        // 💡 --- 새로운 채팅방 생성 로직 (핵심) ---
+        if (!chat_id) {
+            // 사용자 인증 미들웨어를 통해 req.user.id가 설정되었다고 가정합니다.
+            // 이 부분이 없다면, user_id를 다른 방법으로 가져와야 합니다.
+            const userId = req.user.userId;
+            if (!userId) {
+                return next(createError(401, '로그인이 필요합니다.', 'UNAUTHORIZED'));
+            }
+
+            const newChatRoom = await prisma.chatRoom.create({
+                data: {
+                    user_id: userId,
+                    title: content.substring(0, 30) // 첫 질문의 앞 30자를 제목으로 자동 생성
+                }
+            });
+            chat_id = newChatRoom.chat_id; // 새로 생성된 chat_id를 변수에 할당
+        }
+        // 💡 --- 로직 종료 ---
 
         let aiContent;
         let responseMessage = "질문하기 성공";
 
         try {
-            // [3] FastAPI AI 서버에 질문 전송
             const aiResponse = await ai.generateAnswer({ question: content });
             
-            // [4] AI 응답 성공 여부 확인
             if (aiResponse && aiResponse.answer) {
                 aiContent = aiResponse.answer;
             } else {
                 throw new Error('Invalid AI response format');
             }
         } catch (error) {
-            // [4-실패] AI 응답 실패 시
             console.error("AI 응답 생성 실패:", error.message);
             aiContent = "죄송합니다. 답변을 생성하지 못했습니다.";
-            responseMessage = "AI 응답 실패";
+            responseMessage = "AI 응답 실패, 기본 메시지로 대체됨";
         }
 
-        // [2, 5] 질문과 답변을 트랜잭션으로 동시에 저장
-        // 하나라도 실패하면 모두 롤백되어 데이터 정합성을 보장합니다.
         const [questionRecord, answerRecord] = await prisma.$transaction([
-            // 질문 저장 (Model: ChatComment)
             prisma.chatComment.create({
                 data: {
-                    chat_id: chat_id,       // 스키마에 정의된 외래 키 필드
+                    chat_id: chat_id, // 이제 chat_id는 항상 유효한 값입니다.
                     content: content,
                     is_question: true
-                    // ChatComment 모델에는 user_id가 없으므로 제거
                 }
             }),
-            // 답변 저장 (Model: ChatComment)
             prisma.chatComment.create({
                 data: {
-                    chat_id: chat_id,       // 스키마에 정의된 외래 키 필드
+                    chat_id: chat_id, // 이제 chat_id는 항상 유효한 값입니다.
                     content: aiContent,
                     is_question: false
                 }
             })
         ]);
 
-        // [6] 최종 응답 반환 (HTTP 201)
         return res.status(201).json({
             message: responseMessage,
             success: true,
             chat: {
-                chat_id: chat_id,
+                chat_id: chat_id, // 새로 생성되었을 수 있는 chat_id를 응답에 포함
                 question: {
                     content_id: questionRecord.content_id,
                     content: questionRecord.content,
@@ -76,12 +86,10 @@ export const ask = async (req, res, next) => {
         });
 
     } catch (err) {
-        // [ERROR 경로] DB 오류(트랜잭션 실패 포함) 등 예측하지 못한 모든 에러 처리
         next(err);
     }
-
-    
 };
+
 export const getChat = async (req, res, next) => {
     // TODO : 해당 user의 특정 chat_id 채팅들 GET
     try {
