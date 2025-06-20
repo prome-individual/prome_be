@@ -25,5 +25,6 @@ jobs:
             git pull origin master
             npm install
             npx prisma generate
-            pm2 restart all
+            npx prisma migrate deploy
+            pm2 restart app
           EOF

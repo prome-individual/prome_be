@@ -31,6 +31,7 @@ model User {
 
   chat_rooms ChatRoom[]
   diagnosis  Diagnosis[]
+  hospitals  Hospital[]
 
   @@map("user") // 실제 테이블 이름 'user'와 매핑
 }
@@ -61,10 +62,13 @@ model ChatComment {
 
 model Hospital {
   hospital_id   Int     @id @default(autoincrement())
+  user_id       Int
   hospital_name String?
   distance      Float?
+  address       String
   score         Int?
 
+  user         User          @relation(fields: [user_id], references: [user_id])
   reservations Reservation[]
   calendars    Calendar[]
 
@@ -75,7 +79,6 @@ model Reservation {
   reservation_id   Int      @id @default(autoincrement())
   hospital_id      Int
   reservation_date DateTime
-  address          String
 
   hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
 
