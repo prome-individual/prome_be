@@ -49,11 +49,13 @@ model ChatRoom {
 }
 
 model ChatComment {
-  content_id  Int      @id @default(autoincrement())
-  chat_id     Int
-  is_question Boolean
-  content     String
-  created_at  DateTime @default(now())
+  content_id   Int      @id @default(autoincrement())
+  chat_id      Int
+  is_question  Boolean
+  content      String
+  is_recommend Boolean? @default(false) // AI 응답이 병원 추천인지 여부
+  is_diag      Boolean? @default(false) // AI 응답이 진단 관련인지 여부
+  created_at   DateTime @default(now())
 
   chat_room ChatRoom @relation(fields: [chat_id], references: [chat_id])
 

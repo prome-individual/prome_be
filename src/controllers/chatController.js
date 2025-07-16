@@ -1,7 +1,8 @@
-
 import prisma from '../models/prisma.js';
 import createError from '../utils/createError.js';
 import * as ai from '../services/aiService.js';
+
+const MAX_HISTORY_COUNT = 20; // 최대 20개의 이전 메시지만 포함
 
 export const ask = async (req, res, next) => {
     try {
@@ -22,21 +23,64 @@ export const ask = async (req, res, next) => {
             const newChatRoom = await prisma.chatRoom.create({
                 data: {
                     user_id: userId,
-                    title: content.substring(0, 30) // title 임시 생성해둠`
+                    title: content.substring(0, 30) // title 임시 생성해둠
                 }
             });
             chat_id = newChatRoom.chat_id; // 새로 생성된 chat_id를 변수에 할당
         }
 
+        // 이전 채팅 기록 조회 (기존 채팅방인 경우에만)
+        let chatHistory = [];
+        if (chat_id) {
+            const existingComments = await prisma.chatComment.findMany({
+                where: { chat_id: chat_id },
+                orderBy: { created_at: 'desc' }, // 최신 순으로 정렬
+                take: MAX_HISTORY_COUNT, // 최대 개수 제한
+                select: {
+                    content: true,
+                    is_question: true,
+                    is_recommend: true,
+                    is_diag: true,
+                    created_at: true
+                }
+            });
+            
+            // 채팅 히스토리를 AI가 이해할 수 있는 형태로 변환 (시간순으로 다시 정렬)
+            chatHistory = existingComments
+                .reverse() // 시간 순서대로 다시 정렬
+                .map(comment => ({
+                    role: comment.is_question ? 'user' : 'assistant',
+                    content: comment.content,
+                    timestamp: comment.created_at,
+                    // AI 응답의 경우 추가 메타데이터 포함
+                    ...(comment.is_question ? {} : {
+                        isRecommend: comment.is_recommend,
+                        isDiag: comment.is_diag
+                    })
+                }));
+        }
+
         let aiContent;
+        let isRecommend = false;
+        let isDiag = false;
         let responseMessage = "질문하기 성공";
 
         // 질문하기 (실패 시 기본 응답(responseMessage)으로 대체)
         try {
-            const aiResponse = await ai.generateAnswer({ question: content });
+            const aiRequestData = {
+                question: content,
+                history: chatHistory, // 이전 대화 기록 포함
+                userId: userId, // 사용자 정보도 포함 (개인화를 위해)
+                chatId: chat_id // 채팅방 정보도 포함
+            };
+
+            const aiResponse = await ai.generateAnswer(aiRequestData);
             
-            if (aiResponse && aiResponse.answer) {
-                aiContent = aiResponse.answer;
+            // AI 서버에서 3개의 값을 응답해줌: content, isRecommend, isDiag
+            if (aiResponse && aiResponse.content) {
+                aiContent = aiResponse.content;
+                isRecommend = aiResponse.isRecommend || false;
+                isDiag = aiResponse.isDiag || false;
             } else {
                 throw new Error('AI_RESPONSE_ERROR');
             }
@@ -46,20 +90,24 @@ export const ask = async (req, res, next) => {
             responseMessage = "AI 응답 실패, 기본 메시지로 대체됨";
         }
 
-        // transaction 처리
+        // transaction 처리 - AI 플래그도 함께 저장
         const [questionRecord, answerRecord] = await prisma.$transaction([
             prisma.chatComment.create({
                 data: {
                     chat_id: chat_id, 
                     content: content,
-                    is_question: true
+                    is_question: true,
+                    is_recommend: null, // 질문에는 해당 없음
+                    is_diag: null       // 질문에는 해당 없음
                 }
             }),
             prisma.chatComment.create({
                 data: {
                     chat_id: chat_id, 
                     content: aiContent,
-                    is_question: false
+                    is_question: false,
+                    is_recommend: isRecommend, // AI 응답의 추천 플래그
+                    is_diag: isDiag           // AI 응답의 진단 플래그
                 }
             })
         ]);
@@ -79,8 +127,16 @@ export const ask = async (req, res, next) => {
                     content_id: answerRecord.content_id,
                     content: answerRecord.content,
                     is_question: answerRecord.is_question,
+                    is_recommend: answerRecord.is_recommend,
+                    is_diag: answerRecord.is_diag,
                     created_at: answerRecord.created_at
                 }
+            },
+            // 디버깅 용도 (실제 운영에서는 제거 가능)
+            debug_info: {
+                history_count: chatHistory.length,
+                has_recommend_history: chatHistory.some(h => h.isRecommend),
+                has_diag_history: chatHistory.some(h => h.isDiag)
             }
         });
 
@@ -117,6 +173,8 @@ export const getChat = async (req, res, next) => {
                 content_id: comment.content_id,
                 is_question: comment.is_question,
                 content: comment.content,
+                is_recommend: comment.is_recommend,
+                is_diag: comment.is_diag,
                 created_at: comment.created_at
             }))
         };
@@ -170,6 +228,8 @@ export const getChatPeriod = async (req, res, next) => {
                 content_id: c.content_id,
                 content: c.content,
                 is_question: c.is_question,
+                is_recommend: c.is_recommend,
+                is_diag: c.is_diag,
                 created_at: c.created_at
             }))
         }));
@@ -184,4 +244,3 @@ export const getChatPeriod = async (req, res, next) => {
         next(err);
     }
 };
-
