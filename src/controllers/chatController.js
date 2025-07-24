@@ -2,8 +2,6 @@ import prisma from '../models/prisma.js';
 import createError from '../utils/createError.js';
 import * as ai from '../services/aiService.js';
 
-const MAX_HISTORY_COUNT = 20; // 최대 20개의 이전 메시지만 포함
-
 export const ask = async (req, res, next) => {
     try {
         // chat_id는 없을 수도 있으므로 let으로 선언
@@ -29,37 +27,6 @@ export const ask = async (req, res, next) => {
             chat_id = newChatRoom.chat_id; // 새로 생성된 chat_id를 변수에 할당
         }
 
-        // 이전 채팅 기록 조회 (기존 채팅방인 경우에만)
-        let chatHistory = [];
-        if (chat_id) {
-            const existingComments = await prisma.chatComment.findMany({
-                where: { chat_id: chat_id },
-                orderBy: { created_at: 'desc' }, // 최신 순으로 정렬
-                take: MAX_HISTORY_COUNT, // 최대 개수 제한
-                select: {
-                    content: true,
-                    is_question: true,
-                    is_recommend: true,
-                    is_diag: true,
-                    created_at: true
-                }
-            });
-            
-            // 채팅 히스토리를 AI가 이해할 수 있는 형태로 변환 (시간순으로 다시 정렬)
-            chatHistory = existingComments
-                .reverse() // 시간 순서대로 다시 정렬
-                .map(comment => ({
-                    role: comment.is_question ? 'user' : 'assistant',
-                    content: comment.content,
-                    timestamp: comment.created_at,
-                    // AI 응답의 경우 추가 메타데이터 포함
-                    ...(comment.is_question ? {} : {
-                        isRecommend: comment.is_recommend,
-                        isDiag: comment.is_diag
-                    })
-                }));
-        }
-
         let aiContent;
         let isRecommend = false;
         let isDiag = false;
@@ -69,7 +36,6 @@ export const ask = async (req, res, next) => {
         try {
             const aiRequestData = {
                 question: content,
-                history: chatHistory, // 이전 대화 기록 포함
                 userId: userId, // 사용자 정보도 포함 (개인화를 위해)
                 chatId: chat_id // 채팅방 정보도 포함
             };
@@ -131,12 +97,6 @@ export const ask = async (req, res, next) => {
                     is_diag: answerRecord.is_diag,
                     created_at: answerRecord.created_at
                 }
-            },
-            // 디버깅 용도 (실제 운영에서는 제거 가능)
-            debug_info: {
-                history_count: chatHistory.length,
-                has_recommend_history: chatHistory.some(h => h.isRecommend),
-                has_diag_history: chatHistory.some(h => h.isDiag)
             }
         });
 
