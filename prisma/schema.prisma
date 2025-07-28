@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -14,37 +8,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Gender {
-  male
-  female
-}
-
 model User {
-  user_id       Int     @id @default(autoincrement())
-  id            String  @unique
+  user_id       Int         @id @default(autoincrement())
+  id            String      @unique
   password      String
   name          String?
   age           Int?
   gender        Gender?
   phone         String?
   refresh_token String?
+  chat_rooms    ChatRoom[]
+  diagnosis     Diagnosis[]
+  hospitals     Hospital[]
 
-  chat_rooms ChatRoom[]
-  diagnosis  Diagnosis[]
-  hospitals  Hospital[]
-
-  @@map("user") // 실제 테이블 이름 'user'와 매핑
+  @@map("user")
 }
 
 model ChatRoom {
-  chat_id    Int      @id @default(autoincrement())
+  chat_id    Int           @id @default(autoincrement())
   user_id    Int
   title      String?
-  created_at DateTime @default(now())
+  created_at DateTime      @default(now())
+  comments   ChatComment[]
+  user       User          @relation(fields: [user_id], references: [user_id])
 
-  user     User          @relation(fields: [user_id], references: [user_id])
-  comments ChatComment[]
-
+  @@index([user_id], map: "chat_rooms_user_id_fkey")
   @@map("chat_rooms")
 }
 
@@ -53,61 +41,64 @@ model ChatComment {
   chat_id      Int
   is_question  Boolean
   content      String
-  is_recommend Boolean? @default(false) // AI 응답이 병원 추천인지 여부
-  is_diag      Boolean? @default(false) // AI 응답이 진단 관련인지 여부
   created_at   DateTime @default(now())
+  is_diag      Boolean? @default(false)
+  is_recommend Boolean? @default(false)
+  ecg          Int?     @default(-1)
+  temp         Float?   @default(0)
+  chat_room    ChatRoom @relation(fields: [chat_id], references: [chat_id])
 
-  chat_room ChatRoom @relation(fields: [chat_id], references: [chat_id])
-
+  @@index([chat_id], map: "chat_comments_chat_id_fkey")
   @@map("chat_comments")
 }
 
 model Hospital {
-  hospital_id   Int     @id @default(autoincrement())
+  hospital_id   Int           @id @default(autoincrement())
   user_id       Int
   hospital_name String?
   distance      Float?
   address       String
   score         Int?
+  calendars     Calendar[]
+  user          User          @relation(fields: [user_id], references: [user_id])
+  reservations  Reservation[]
 
-  user         User          @relation(fields: [user_id], references: [user_id])
-  reservations Reservation[]
-  calendars    Calendar[]
-
-  @@map("hospital") // 실제 테이블 이름 'hospital'과 매핑
+  @@index([user_id], map: "hospital_user_id_fkey")
+  @@map("hospital")
 }
 
 model Reservation {
   reservation_id   Int      @id @default(autoincrement())
   hospital_id      Int
   reservation_date DateTime
+  hospital         Hospital @relation(fields: [hospital_id], references: [hospital_id])
 
-  hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
-
-  @@map("reservation") // 실제 테이블 이름 'reservation'과 매핑
+  @@index([hospital_id], map: "reservation_hospital_id_fkey")
+  @@map("reservation")
 }
 
 model Calendar {
   calendar_id   Int      @id @default(autoincrement())
   hospital_id   Int
   hospital_date DateTime
+  hospital      Hospital @relation(fields: [hospital_id], references: [hospital_id])
 
-  hospital Hospital @relation(fields: [hospital_id], references: [hospital_id])
-
-  @@map("calendar") // 실제 테이블 이름 'calendar'과 매핑
+  @@index([hospital_id], map: "calendar_hospital_id_fkey")
+  @@map("calendar")
 }
-
-// model Description {
-//   // Not used in DB, stored in files
-// }
 
 model Diagnosis {
   diagnosis_id Int      @id @default(autoincrement())
   user_id      Int
   result       String
   created_at   DateTime @default(now())
+  user         User     @relation(fields: [user_id], references: [user_id])
 
-  user User @relation(fields: [user_id], references: [user_id])
-
+  @@index([user_id], map: "diagnosis_user_id_fkey")
   @@map("diagnosis")
+}
+
+enum Gender {
+  male
+  female
 }

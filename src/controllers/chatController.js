@@ -5,11 +5,20 @@ import * as ai from '../services/aiService.js';
 export const ask = async (req, res, next) => {
     try {
         // chat_id는 없을 수도 있으므로 let으로 선언
-        let { chat_id, content } = req.body;
+        let { chat_id, content, temp, ecg } = req.body;
         const userId = req.user.userId;
 
         if (!content || typeof content !== 'string' || content.trim() === '') {
             return next(createError(400, '질문을 입력해주세요', 'INVALID_INPUT'));
+        }
+
+        // temp와 ecg 기본값 설정
+        const temperatureValue = temp !== undefined && temp !== null ? parseFloat(temp) : 0;
+        const ecgValue = ecg !== undefined && ecg !== null ? parseInt(ecg) : -1;
+
+        // ECG 값 검증 (0~4 또는 -1만 허용)
+        if (ecgValue !== -1 && (ecgValue < 0 || ecgValue > 4)) {
+            return next(createError(400, 'ECG 값은 0~4 사이의 정수여야 합니다', 'INVALID_ECG_VALUE'));
         }
 
         // 질문 시, chat_id 없이 데이터 POST하면 -> chat_id 만들어서 새 채팅방 생성 
@@ -37,7 +46,9 @@ export const ask = async (req, res, next) => {
             const aiRequestData = {
                 question: content,
                 userId: userId, // 사용자 정보도 포함 (개인화를 위해)
-                chatId: chat_id // 채팅방 정보도 포함
+                chatId: chat_id, // 채팅방 정보도 포함
+                temp: temperatureValue, // 체온 정보 추가
+                ecg: ecgValue // ECG 정보 추가
             };
 
             const aiResponse = await ai.generateAnswer(aiRequestData);
@@ -56,7 +67,7 @@ export const ask = async (req, res, next) => {
             responseMessage = "AI 응답 실패, 기본 메시지로 대체됨";
         }
 
-        // transaction 처리 - AI 플래그도 함께 저장
+        // transaction 처리 - AI 플래그와 temp, ecg 값도 함께 저장
         const [questionRecord, answerRecord] = await prisma.$transaction([
             prisma.chatComment.create({
                 data: {
@@ -64,7 +75,9 @@ export const ask = async (req, res, next) => {
                     content: content,
                     is_question: true,
                     is_recommend: null, // 질문에는 해당 없음
-                    is_diag: null       // 질문에는 해당 없음
+                    is_diag: null,      // 질문에는 해당 없음
+                    temp: temperatureValue, // 질문 시의 체온
+                    ecg: ecgValue       // 질문 시의 ECG 값
                 }
             }),
             prisma.chatComment.create({
@@ -73,7 +86,9 @@ export const ask = async (req, res, next) => {
                     content: aiContent,
                     is_question: false,
                     is_recommend: isRecommend, // AI 응답의 추천 플래그
-                    is_diag: isDiag           // AI 응답의 진단 플래그
+                    is_diag: isDiag,          // AI 응답의 진단 플래그
+                    temp: null,               // AI 응답에는 체온 정보 없음
+                    ecg: null                 // AI 응답에는 ECG 정보 없음
                 }
             })
         ]);
@@ -87,6 +102,8 @@ export const ask = async (req, res, next) => {
                     content_id: questionRecord.content_id,
                     content: questionRecord.content,
                     is_question: questionRecord.is_question,
+                    temp: questionRecord.temp,
+                    ecg: questionRecord.ecg,
                     created_at: questionRecord.created_at
                 },
                 answer: {
@@ -95,6 +112,8 @@ export const ask = async (req, res, next) => {
                     is_question: answerRecord.is_question,
                     is_recommend: answerRecord.is_recommend,
                     is_diag: answerRecord.is_diag,
+                    temp: answerRecord.temp,
+                    ecg: answerRecord.ecg,
                     created_at: answerRecord.created_at
                 }
             }
@@ -135,6 +154,8 @@ export const getChat = async (req, res, next) => {
                 content: comment.content,
                 is_recommend: comment.is_recommend,
                 is_diag: comment.is_diag,
+                temp: comment.temp, // 체온 정보 추가
+                ecg: comment.ecg,   // ECG 정보 추가
                 created_at: comment.created_at
             }))
         };
@@ -190,6 +211,8 @@ export const getChatPeriod = async (req, res, next) => {
                 is_question: c.is_question,
                 is_recommend: c.is_recommend,
                 is_diag: c.is_diag,
+                temp: c.temp, // 체온 정보 추가
+                ecg: c.ecg,   // ECG 정보 추가
                 created_at: c.created_at
             }))
         }));
