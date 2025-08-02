@@ -45,19 +45,19 @@ export const ask = async (req, res, next) => {
         try {
             const aiRequestData = {
                 question: content,
-                userId: userId, // 사용자 정보도 포함 (개인화를 위해)
-                chatId: chat_id, // 채팅방 정보도 포함
+                user_id: userId,        // userId → user_id로 변경
+                chat_id: chat_id,       // chatId → chat_id로 변경
                 temp: temperatureValue, // 체온 정보 추가
-                ecg: ecgValue // ECG 정보 추가
+                ecg: ecgValue          // ECG 정보 추가
             };
 
             const aiResponse = await ai.generateAnswer(aiRequestData);
             
-            // AI 서버에서 3개의 값을 응답해줌: content, isRecommend, isDiag
+            // AI 서버에서 3개의 값을 응답해줌: content, is_diag, is_recommend
             if (aiResponse && aiResponse.content) {
                 aiContent = aiResponse.content;
-                isRecommend = aiResponse.isRecommend || false;
-                isDiag = aiResponse.isDiag || false;
+                isRecommend = aiResponse.is_recommend || false;  // isRecommend → is_recommend
+                isDiag = aiResponse.is_diag || false;           // isDiag → is_diag
             } else {
                 throw new Error('AI_RESPONSE_ERROR');
             }
