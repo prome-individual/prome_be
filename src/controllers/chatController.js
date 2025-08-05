@@ -4,6 +4,7 @@ import * as ai from '../services/aiService.js';
 
 export const ask = async (req, res, next) => {
     try {
+	/*
         // chat_id는 없을 수도 있으므로 let으로 선언
         let { chat_id, content, temp, ecg } = req.body;
         const userId = req.user.userId;
@@ -16,11 +17,53 @@ export const ask = async (req, res, next) => {
         const temperatureValue = temp !== undefined && temp !== null ? parseFloat(temp) : 0;
         const ecgValue = ecg !== undefined && ecg !== null ? parseInt(ecg) : -1;
 
+	//const temperatureValue = temp !== undefined && temp !== null && temp !== '' ? parseFloat(temp) : null;
+	//const ecgValue = ecg !== undefined && ecg !== null && ecg !== '' ? parseInt(ecg) : null;
+
         // ECG 값 검증 (0~4 또는 -1만 허용)
         if (ecgValue !== -1 && (ecgValue < 0 || ecgValue > 4)) {
             return next(createError(400, 'ECG 값은 0~4 사이의 정수여야 합니다', 'INVALID_ECG_VALUE'));
         }
+	*/
+	let { chat_id, content, temp, ecg } = req.body;
+const userId = req.user.userId;
 
+if (!content || typeof content !== 'string' || content.trim() === '') {
+    return next(createError(400, '질문을 입력해주세요', 'INVALID_INPUT'));
+}
+
+// temp와 ecg 기본값 설정
+let temperatureValue = temp !== undefined && temp !== null ? parseFloat(temp) : 0;
+let ecgValue = ecg !== undefined && ecg !== null ? parseInt(ecg) : -1;
+
+// 기존 채팅방이 있고, temp나 ecg가 기본값인 경우 최근 값을 조회해서 유지
+if (chat_id && (temperatureValue === 0 || ecgValue === -1)) {
+    const lastDiagnosisComment = await prisma.chatComment.findFirst({
+        where: {
+            chat_id: chat_id,
+            OR: [
+                { temp: { not: null, gt: 0 } },
+                { ecg: { not: null, not: -1 } }
+            ]
+        },
+        orderBy: { created_at: 'desc' }
+    });
+
+    if (lastDiagnosisComment) {
+        // 기본값인 경우에만 이전 값으로 대체
+        if (temperatureValue === 0 && lastDiagnosisComment.temp && lastDiagnosisComment.temp > 0) {
+            temperatureValue = lastDiagnosisComment.temp;
+        }
+        if (ecgValue === -1 && lastDiagnosisComment.ecg && lastDiagnosisComment.ecg !== -1) {
+            ecgValue = lastDiagnosisComment.ecg;
+        }
+    }
+}
+
+// ECG 값 검증 (0~4 또는 -1만 허용)
+if (ecgValue !== -1 && (ecgValue < 0 || ecgValue > 4)) {
+    return next(createError(400, 'ECG 값은 0~4 사이의 정수여야 합니다', 'INVALID_ECG_VALUE'));
+}
         // 질문 시, chat_id 없이 데이터 POST하면 -> chat_id 만들어서 새 채팅방 생성 
         if (!chat_id) {
             if (!userId) {

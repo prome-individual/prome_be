@@ -40,7 +40,7 @@ model ChatComment {
   content_id   Int      @id @default(autoincrement())
   chat_id      Int
   is_question  Boolean
-  content      String
+  content      String   @db.Text
   created_at   DateTime @default(now())
   is_diag      Boolean? @default(false)
   is_recommend Boolean? @default(false)
