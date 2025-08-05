@@ -8,7 +8,8 @@ async function analyzeECG(data) {
 
 async function generateAnswer(data) {
     const response = await axios.post(`${config.ragUrl}/ai_rag`, data);
-    return response.data;
+    // const response = await axios.post("https://b5399fe7ff95.ngrok-free.app/ai_rag", data);
+	return response.data;
 }
 
 async function extractSchedule(data) {
